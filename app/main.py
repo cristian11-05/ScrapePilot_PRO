@@ -68,12 +68,22 @@ def api_admin(username: str = Depends(get_current_username)):
 @app.get("/api/admin/datasets/{ds_id}/download_raw")
 def admin_download_raw(ds_id: int, username: str = Depends(get_current_username)):
     ds = get_dataset(ds_id)
-    if not ds or not ds.get("file_path"):
-        raise HTTPException(404, "File not found")
-    filepath = ds["file_path"]
-    if not os.path.exists(filepath):
-        raise HTTPException(404, "File not found on disk")
-    return FileResponse(filepath, media_type="text/csv", filename=f"dataset_{ds_id}_raw.csv")
+    if not ds:
+        raise HTTPException(404, "Dataset not found")
+        
+    csv_data = ds.get("csv_data")
+    if not csv_data:
+        # Fallback to local file if csv_data is missing (old datasets)
+        filepath = ds.get("file_path", "")
+        if os.path.exists(filepath):
+            return FileResponse(filepath, media_type="text/csv", filename=f"dataset_{ds_id}_raw.csv")
+        raise HTTPException(404, "No CSV data available")
+        
+    return StreamingResponse(
+        io.StringIO(csv_data),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=dataset_{ds_id}_raw.csv"}
+    )
 
 # =============================================
 # API ENDPOINTS
@@ -159,7 +169,22 @@ def seo_dataset_page(ds_id: int):
     records = ds["record_count"]
     # Get a free preview (first 3 rows from CSV)
     preview_html = ""
-    if ds.get("file_path") and os.path.exists(ds["file_path"]):
+    csv_data = ds.get("csv_data")
+    if csv_data:
+        try:
+            import pandas as pd
+            df = pd.read_csv(io.StringIO(csv_data), nrows=3)
+            # Censor emails and phones
+            for col in df.columns:
+                if "email" in col.lower():
+                    df[col] = df[col].apply(lambda x: str(x)[:3] + "***@***.com" if pd.notna(x) and x else "")
+                if "phone" in col.lower() or "tel" in col.lower():
+                    df[col] = df[col].apply(lambda x: str(x)[:3] + "*****" if pd.notna(x) and x else "")
+            preview_html = df.to_html(index=False, classes="preview-table", border=0)
+        except Exception:
+            pass
+    elif ds.get("file_path") and os.path.exists(ds["file_path"]):
+        # Fallback for old local files
         try:
             import pandas as pd
             df = pd.read_csv(ds["file_path"], nrows=3)

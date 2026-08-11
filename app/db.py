@@ -173,6 +173,7 @@ def init_db():
                     record_count INT DEFAULT 0,
                     price_cents INT DEFAULT 990,
                     file_path TEXT DEFAULT '',
+                    csv_data TEXT DEFAULT '',
                     status VARCHAR(50) DEFAULT 'building',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -191,6 +192,17 @@ def init_db():
                 conn.commit()
         else:
             with conn:
+                try:
+                    conn.execute("ALTER TABLE scans ADD COLUMN company_name TEXT DEFAULT '';")
+                    conn.execute("ALTER TABLE scans ADD COLUMN phone TEXT DEFAULT '';")
+                    conn.execute("ALTER TABLE scans ADD COLUMN email TEXT DEFAULT '';")
+                    conn.execute("ALTER TABLE scans ADD COLUMN address TEXT DEFAULT '';")
+                except Exception:
+                    pass
+                try:
+                    conn.execute("ALTER TABLE datasets ADD COLUMN csv_data TEXT DEFAULT '';")
+                except Exception:
+                    pass
                 conn.executescript("""
                 CREATE TABLE IF NOT EXISTS sites (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -281,6 +293,7 @@ def init_db():
                     record_count INTEGER DEFAULT 0,
                     price_cents INTEGER DEFAULT 990,
                     file_path TEXT DEFAULT '',
+                    csv_data TEXT DEFAULT '',
                     status TEXT DEFAULT 'building',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -469,7 +482,7 @@ def add_dataset(title, description, category, search_query, price_cents=990):
     return execute_insert(sql_pg, sql_lite, (title, description, category, search_query, price_cents))
 
 def update_dataset(ds_id, **fields):
-    allowed = {"title", "description", "category", "record_count", "price_cents", "file_path", "status"}
+    allowed = {"title", "description", "category", "record_count", "price_cents", "file_path", "status", "csv_data"}
     fields = {k: v for k, v in fields.items() if k in allowed and v is not None}
     if not fields:
         return

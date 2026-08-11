@@ -50,18 +50,14 @@ def build_dataset(dataset_id: int, export_dir="data/exports"):
     available_cols = [c for c in base_cols + llm_cols if c in df.columns]
     clean_df = df[available_cols]
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_filename = f"dataset_{dataset_id}_{timestamp}.csv"
-    csv_path = os.path.join(export_dir, csv_filename)
-    
-    clean_df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+    csv_string = clean_df.to_csv(index=False, encoding="utf-8-sig")
     
     records = len(clean_df)
-    update_dataset(dataset_id, status="ready", record_count=records, file_path=csv_path)
+    update_dataset(dataset_id, status="ready", record_count=records, file_path="db_virtual", csv_data=csv_string)
     
     return {
         "status": "ok", 
-        "csv": csv_path, 
+        "csv": "db_virtual", 
         "records": records
     }
 
