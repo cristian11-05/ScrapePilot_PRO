@@ -85,6 +85,31 @@ def admin_download_raw(ds_id: int, username: str = Depends(get_current_username)
         headers={"Content-Disposition": f"attachment; filename=dataset_{ds_id}_raw.csv"}
     )
 
+@app.get("/api/admin/datasets/{ds_id}/preview", response_class=HTMLResponse)
+def admin_preview_raw(ds_id: int, username: str = Depends(get_current_username)):
+    ds = get_dataset(ds_id)
+    if not ds:
+        raise HTTPException(404, "Dataset not found")
+        
+    csv_data = ds.get("csv_data")
+    if not csv_data:
+        return "<h2 style='color:red'>No hay datos CSV en la base de datos. Por favor, vuelve al panel y haz clic en '🔄 Re-Consolidar' para que la IA regenere el archivo y lo guarde correctamente.</h2>"
+        
+    try:
+        import pandas as pd
+        df = pd.read_csv(io.StringIO(csv_data))
+        html_table = df.to_html(index=False, border=1)
+        return f"""
+        <!doctype html><html><head><meta charset="utf-8"><title>Preview {ds_id}</title>
+        <style>body{{font-family:sans-serif;padding:20px;background:#f8fafc;}} table{{border-collapse:collapse;width:100%;}} th,td{{padding:8px;border:1px solid #cbd5e1;font-size:13px;text-align:left;}} th{{background:#e2e8f0;}}</style>
+        </head><body><h2>Preview Real (Sin Censura) - Dataset {ds_id}</h2>
+        <p><b>{ds['title']}</b> - {ds['record_count']} registros</p>
+        <p><a href="/api/admin/datasets/{ds_id}/download_raw" style="color:blue">📥 Descargar CSV Ahora</a></p>
+        {html_table}</body></html>
+        """
+    except Exception as e:
+        return f"Error leyendo CSV: {str(e)}"
+
 # =============================================
 # API ENDPOINTS
 # =============================================
@@ -150,7 +175,7 @@ Título del dataset: {ds['title']}
 Registros: {ds['record_count']}
 Precio: S/ {ds['price_cents']/100}
 Incluye emojis, crea urgencia, y dile a la gente que comente 'INFO' o te escriba por DM para comprarlo. No uses hashtags excesivos. Máximo 3 párrafos."""
-        response = client.models.generate_content(model="gemini-2.0-flash-lite", contents=prompt)
+        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         return {"marketing_text": response.text.strip()}
     except Exception as e:
         return {"marketing_text": f"Error generando texto: {str(e)}"}
@@ -495,9 +520,11 @@ async function load() {
         let act = d.status !== 'ready' 
             ? `<button onclick="build('${d.id}')" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar</button>` 
             : `<div style="display:flex;gap:5px;flex-direction:column">
+                <a href="/api/admin/datasets/${d.id}/preview" style="color:#f59e0b;font-size:13px;text-decoration:none;font-weight:bold" target="_blank">👁️ Ver Datos Reales</a>
                 <a href="/api/admin/datasets/${d.id}/download_raw" style="color:#10b981;font-size:13px;text-decoration:none;font-weight:bold" target="_blank">📥 Descargar CSV</a>
                 <a href="/d/${d.id}" target="_blank" style="color:var(--brand);font-size:13px;text-decoration:none">🌐 Ver SEO</a>
                 <button onclick="marketing('${d.id}')" style="padding:6px 12px;font-size:12px;background:#8b5cf6;border:0;color:white;cursor:pointer;border-radius:4px">📢 Crear Post</button>
+                <button onclick="build('${d.id}')" style="padding:4px 8px;font-size:10px;background:#64748b;border:0;color:white;cursor:pointer;border-radius:4px;margin-top:5px" title="Regenera el archivo Excel">🔄 Re-Consolidar</button>
                </div>`;
                
         return `<tr>
