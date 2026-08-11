@@ -83,6 +83,11 @@ def init_db():
                         cur.execute(f"ALTER TABLE scans ADD COLUMN IF NOT EXISTS {col} {typ}")
                     except Exception:
                         pass
+                # Migration: Add csv_data column to datasets
+                try:
+                    cur.execute("ALTER TABLE datasets ADD COLUMN IF NOT EXISTS csv_data TEXT DEFAULT ''")
+                except Exception:
+                    pass
                 conn.commit()
                 cur.execute("""
                 CREATE TABLE IF NOT EXISTS sites (

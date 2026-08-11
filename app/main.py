@@ -555,10 +555,13 @@ async function build(id) {
     try {
         let r = await fetch(`/api/datasets/${id}/build`, {method:"POST"});
         let res = await r.json();
-        if(res.status === 'ok') alert(`✅ Dataset consolidado y listo para venta. ${res.records} registros válidos limpios.`);
-        else alert('Error: ' + res.message);
+        if(r.ok && res.status === 'ok') {
+            alert(`✅ Dataset consolidado y listo para venta. ${res.records} registros válidos limpios.`);
+        } else {
+            alert('⚠️ Error: ' + (res.message || res.detail || JSON.stringify(res)));
+        }
         load();
-    } catch(e) { alert(e.message); }
+    } catch(e) { alert('Error de red: ' + e.message); }
 }
 
 async function marketing(id) {
@@ -568,7 +571,7 @@ async function marketing(id) {
     try {
         let r = await fetch(`/api/datasets/${id}/marketing`);
         let res = await r.json();
-        alert("📢 POST VIRAL CREADO POR GEMINI:\\n\\n" + res.marketing_text + "\\n\\n(Cópialo y pégalo en Facebook o LinkedIn)");
+        alert("📢 POST VIRAL CREADO POR GEMINI:\n\n" + res.marketing_text + "\n\n(Cópialo y pégalo en Facebook o LinkedIn)");
     } catch(e) {
         alert("Error generando marketing");
     }
