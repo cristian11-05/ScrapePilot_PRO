@@ -95,6 +95,29 @@ def api_wake_brain():
     t.start()
     return {"ok": True, "message": "🧠 El Cerebro se ha despertado y está operando en segundo plano."}
 
+@app.get("/api/datasets/{ds_id}/marketing")
+def api_generate_marketing(ds_id: int):
+    ds = get_dataset(ds_id)
+    if not ds:
+        raise HTTPException(404, "Dataset no encontrado")
+        
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        return {"marketing_text": "⚠️ Configura tu GEMINI_API_KEY en Render para usar esta función."}
+        
+    try:
+        from google import genai
+        client = genai.Client(api_key=gemini_key)
+        prompt = f"""Escribe un post muy cortito y muy vendedor para grupos de Facebook/LinkedIn ofreciendo este dataset.
+Título del dataset: {ds['title']}
+Registros: {ds['record_count']}
+Precio: S/ {ds['price_cents']/100}
+Incluye emojis, crea urgencia, y dile a la gente que comente 'INFO' o te escriba por DM para comprarlo. No uses hashtags excesivos. Máximo 3 párrafos."""
+        response = client.models.generate_content(model="gemini-2.0-flash-lite", contents=prompt)
+        return {"marketing_text": response.text.strip()}
+    except Exception as e:
+        return {"marketing_text": f"Error generando texto: {str(e)}"}
+
 # =============================================
 # SEO: Individual Dataset Pages (Google los indexa)
 # =============================================
@@ -152,6 +175,13 @@ h1{{font-size:36px;margin-bottom:16px}}
 <a href="/" style="color:var(--brand);text-decoration:none;font-size:14px">&larr; Ver todos los datasets</a>
 <h1 style="margin-top:16px">{title}</h1>
 <span class="badge">✅ {records} registros verificados</span>
+
+<!-- AdSense Placeholder -->
+<div style="background:var(--panel);border:1px dashed var(--border);padding:20px;text-align:center;color:#94a3b8;margin:20px 0;border-radius:12px;">
+    <i>[ Espacio para Anuncio de Google AdSense ]</i><br>
+    <small>Inserta tu script de AdSense en el código para ganar $ por impresiones</small>
+</div>
+
 <p style="color:#cbd5e1;font-size:16px;line-height:1.6;margin-bottom:20px">{desc}</p>
 <div class="info">
 <div><span>{records}</span><small>Registros</small></div>
@@ -282,6 +312,12 @@ main{max-width:1100px;margin:auto;padding:40px 20px}
   <p class="sub">Bases de datos extraídas y limpiadas listas para usar.</p>
 </header>
 <main>
+  <!-- AdSense Placeholder -->
+  <div style="background:var(--panel);border:1px dashed var(--border);padding:20px;text-align:center;color:#94a3b8;margin-bottom:30px;border-radius:12px;">
+      <i>[ Espacio para Anuncio de Google AdSense ]</i><br>
+      <small>Genera ingresos pasivos con las visitas de Google</small>
+  </div>
+
   <div class="grid" id="dsGrid"></div>
 </main>
 
@@ -406,15 +442,20 @@ async function load() {
     
     html += data.map(d => {
         let badge = d.status === 'ready' ? '<span class="badge b-ready">Listo</span>' : '<span class="badge b-build">Construyendo</span>';
+        let act = d.status !== 'ready' 
+            ? `<button onclick="build(${d.id})" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar</button>` 
+            : `<div style="display:flex;gap:5px;flex-direction:column">
+                <a href="/d/${d.id}" target="_blank" style="color:var(--brand);font-size:13px;text-decoration:none">🌐 Ver SEO</a>
+                <button onclick="marketing(${d.id})" style="padding:6px 12px;font-size:12px;background:#8b5cf6">📢 Crear Post</button>
+               </div>`;
+               
         return `<tr>
             <td>${d.id}</td>
             <td><b>${d.title}</b><br><span style="font-size:12px;color:#94a3b8">${d.search_query}</span></td>
             <td>S/ ${(d.price_cents/100).toFixed(2)}</td>
             <td>${d.record_count}</td>
             <td>${badge}</td>
-            <td>
-                ${d.status !== 'ready' ? `<button onclick="build(${d.id})" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar con Pandas</button>` : `<a href="/api/datasets/public" target="_blank" style="color:var(--brand);font-size:13px">Ver en tienda</a>`}
-            </td>
+            <td>${act}</td>
         </tr>`;
     }).join('');
     
@@ -440,6 +481,20 @@ async function build(id) {
         else alert('Error: ' + res.message);
         load();
     } catch(e) { alert(e.message); }
+}
+
+async function marketing(id) {
+    let btn = event.target;
+    let old = btn.textContent;
+    btn.textContent = "⏳ Escribiendo...";
+    try {
+        let r = await fetch(`/api/datasets/${id}/marketing`);
+        let res = await r.json();
+        alert("📢 POST VIRAL CREADO POR GEMINI:\\n\\n" + res.marketing_text + "\\n\\n(Cópialo y pégalo en Facebook o LinkedIn)");
+    } catch(e) {
+        alert("Error generando marketing");
+    }
+    btn.textContent = old;
 }
 
 load();
