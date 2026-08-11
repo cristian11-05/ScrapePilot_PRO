@@ -153,6 +153,7 @@ def seo_dataset_page(ds_id: int):
 <meta property="og:description" content="{desc}. {records} registros por {price}.">
 <meta property="og:type" content="product">
 <link rel="canonical" href="/d/{ds_id}">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4018205585145079" crossorigin="anonymous"></script>
 <style>
 :root{{--bg:#0f172a;--panel:rgba(30,41,59,0.7);--border:rgba(51,65,85,0.5);--text:#f8fafc;--brand:#3b82f6;--accent:#10b981}}
 *{{box-sizing:border-box;margin:0;padding:0}}
@@ -280,6 +281,7 @@ def api_scan_all():
 STOREFRONT = r'''<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DataMarket — Bases de Datos Premium</title>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4018205585145079" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#0f172a;--panel:rgba(30,41,59,0.7);--border:rgba(51,65,85,0.5);--text:#f8fafc;--brand:#3b82f6;--brand-glow:rgba(59,130,246,0.3);--accent:#10b981}
 *{box-sizing:border-box;margin:0;padding:0}
