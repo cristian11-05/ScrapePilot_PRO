@@ -80,14 +80,17 @@ def admin_download_raw(ds_id: int, username: str = Depends(get_current_username)
 # =============================================
 @app.get("/api/datasets")
 def api_get_datasets():
-    return list_datasets()
+    ds = list_datasets()
+    for d in ds:
+        d["id"] = str(d["id"])
+    return ds
 
 @app.get("/api/datasets/public")
 def api_get_datasets_public():
     """Returns only ready datasets without exposing exact file paths"""
     ds = list_datasets()
     return [{
-        "id": d["id"],
+        "id": str(d["id"]),
         "title": d["title"],
         "description": d["description"],
         "record_count": d["record_count"],
@@ -465,11 +468,11 @@ async function load() {
     html += data.map(d => {
         let badge = d.status === 'ready' ? '<span class="badge b-ready">Listo</span>' : '<span class="badge b-build">Construyendo</span>';
         let act = d.status !== 'ready' 
-            ? `<button onclick="build(${d.id})" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar</button>` 
+            ? `<button onclick="build('${d.id}')" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar</button>` 
             : `<div style="display:flex;gap:5px;flex-direction:column">
                 <a href="/api/admin/datasets/${d.id}/download_raw" style="color:#10b981;font-size:13px;text-decoration:none;font-weight:bold" target="_blank">📥 Descargar CSV</a>
                 <a href="/d/${d.id}" target="_blank" style="color:var(--brand);font-size:13px;text-decoration:none">🌐 Ver SEO</a>
-                <button onclick="marketing(${d.id})" style="padding:6px 12px;font-size:12px;background:#8b5cf6;border:0;color:white;cursor:pointer;border-radius:4px">📢 Crear Post</button>
+                <button onclick="marketing('${d.id}')" style="padding:6px 12px;font-size:12px;background:#8b5cf6;border:0;color:white;cursor:pointer;border-radius:4px">📢 Crear Post</button>
                </div>`;
                
         return `<tr>
