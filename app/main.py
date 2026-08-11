@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, PlainTextResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 from pydantic import BaseModel, HttpUrl, Field
 import csv, io, hashlib, time, os, requests as http_requests
 from datetime import datetime
@@ -10,9 +12,21 @@ from .scheduler import start as start_scheduler, refresh_jobs
 from .discovery import discover_and_add
 from .pipeline import build_dataset
 from .brain import run_brain_cycle
-from .config import CULQI_PUBLIC_KEY, CULQI_SECRET_KEY
+from .config import CULQI_PUBLIC_KEY, CULQI_SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD
 
 app = FastAPI(title="DataMarket Autonomous", version="1.1.0")
+security = HTTPBasic()
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 class SiteIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
@@ -48,8 +62,18 @@ def public_storefront():
 # ADMIN DASHBOARD
 # =============================================
 @app.get("/admin", response_class=HTMLResponse)
-def admin_dashboard():
-    return DASHBOARD
+def api_admin(username: str = Depends(get_current_username)):
+    return HTMLResponse(content=DASHBOARD, status_code=200)
+
+@app.get("/api/admin/datasets/{ds_id}/download_raw")
+def admin_download_raw(ds_id: int, username: str = Depends(get_current_username)):
+    ds = get_dataset(ds_id)
+    if not ds or not ds.get("file_path"):
+        raise HTTPException(404, "File not found")
+    filepath = ds["file_path"]
+    if not os.path.exists(filepath):
+        raise HTTPException(404, "File not found on disk")
+    return FileResponse(filepath, media_type="text/csv", filename=f"dataset_{ds_id}_raw.csv")
 
 # =============================================
 # API ENDPOINTS
@@ -178,9 +202,7 @@ h1{{font-size:36px;margin-bottom:16px}}
 <span class="badge">✅ {records} registros verificados</span>
 
 <!-- AdSense Placeholder -->
-<div style="background:var(--panel);border:1px dashed var(--border);padding:20px;text-align:center;color:#94a3b8;margin:20px 0;border-radius:12px;">
-    <i>[ Espacio para Anuncio de Google AdSense ]</i><br>
-    <small>Inserta tu script de AdSense en el código para ganar $ por impresiones</small>
+<div style="margin:20px 0;">
 </div>
 
 <p style="color:#cbd5e1;font-size:16px;line-height:1.6;margin-bottom:20px">{desc}</p>
@@ -315,9 +337,7 @@ main{max-width:1100px;margin:auto;padding:40px 20px}
 </header>
 <main>
   <!-- AdSense Placeholder -->
-  <div style="background:var(--panel);border:1px dashed var(--border);padding:20px;text-align:center;color:#94a3b8;margin-bottom:30px;border-radius:12px;">
-      <i>[ Espacio para Anuncio de Google AdSense ]</i><br>
-      <small>Genera ingresos pasivos con las visitas de Google</small>
+  <div style="margin-bottom:30px;">
   </div>
 
   <div class="grid" id="dsGrid"></div>
@@ -447,8 +467,9 @@ async function load() {
         let act = d.status !== 'ready' 
             ? `<button onclick="build(${d.id})" style="padding:6px 12px;font-size:12px;background:var(--accent)">Consolidar</button>` 
             : `<div style="display:flex;gap:5px;flex-direction:column">
+                <a href="/api/admin/datasets/${d.id}/download_raw" style="color:#10b981;font-size:13px;text-decoration:none;font-weight:bold" target="_blank">📥 Descargar CSV</a>
                 <a href="/d/${d.id}" target="_blank" style="color:var(--brand);font-size:13px;text-decoration:none">🌐 Ver SEO</a>
-                <button onclick="marketing(${d.id})" style="padding:6px 12px;font-size:12px;background:#8b5cf6">📢 Crear Post</button>
+                <button onclick="marketing(${d.id})" style="padding:6px 12px;font-size:12px;background:#8b5cf6;border:0;color:white;cursor:pointer;border-radius:4px">📢 Crear Post</button>
                </div>`;
                
         return `<tr>

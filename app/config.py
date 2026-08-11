@@ -10,6 +10,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "15"))
 USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ScrapePilotBot/1.0")
 
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "secreto123")
+
 WHATSAPP_PHONE = os.getenv("WHATSAPP_PHONE", "918762620")
 WHATSAPP_API_KEY = os.getenv("WHATSAPP_API_KEY", "")
 CALLMEBOT_API_KEY = os.getenv("CALLMEBOT_API_KEY", "")
