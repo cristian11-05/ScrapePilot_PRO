@@ -289,30 +289,30 @@ main{max-width:1100px;margin:auto;padding:40px 20px}
   <div class="modal">
     <h3 id="mTitle" style="color:#fff;margin-bottom:8px"></h3>
     <p id="mPrice" style="color:var(--accent);font-size:24px;font-weight:800;margin-bottom:20px"></p>
-    <div id="payForm">
-        <input type="email" id="payEmail" placeholder="Ingresa tu correo" required>
-        <button class="buy-btn" onclick="processPayment()">💳 Pagar (Yape / Tarjeta)</button>
-        <div id="payStatus" style="margin-top:10px;color:#94a3b8;font-size:14px"></div>
+    
+    <div style="background:rgba(59,130,246,0.1);border:1px solid var(--brand);padding:20px;border-radius:12px;margin-bottom:20px;text-align:center">
+        <h4 style="margin-bottom:10px;color:#fff">Paso 1: Realiza el pago</h4>
+        <p style="color:#cbd5e1;font-size:15px;margin-bottom:10px">Yapea el monto exacto al número:</p>
+        <p style="font-size:32px;font-weight:900;color:var(--accent);letter-spacing:2px">918 762 620</p>
+        <p style="color:#94a3b8;font-size:13px;margin-top:5px">A nombre de Cristian</p>
     </div>
-    <div class="download-box" id="dlBox">
-        <h4 style="color:var(--accent);margin-bottom:10px">✅ ¡Pago Exitoso!</h4>
-        <p style="font-size:13px;color:#cbd5e1">Tu dataset está listo.</p>
-        <a id="dlLink" href="#">📥 Descargar CSV</a>
+
+    <div style="text-align:center">
+        <h4 style="margin-bottom:10px;color:#fff">Paso 2: Confirma tu pago</h4>
+        <button class="buy-btn" onclick="sendWhatsApp()" style="background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12.031 0C5.385 0 0 5.386 0 12.032c0 2.12.553 4.195 1.602 6.012L.182 23.366l5.485-1.442A11.968 11.968 0 0 0 12.031 24c6.646 0 12.03-5.385 12.03-12.03C24.062 5.385 18.677 0 12.03 0zm5.666 17.202c-.25.702-1.428 1.34-1.99 1.417-.51.071-1.168.22-3.344-.68-2.67-1.106-4.38-3.837-4.512-4.013-.133-.176-1.077-1.436-1.077-2.738 0-1.302.67-1.944.908-2.193.238-.25.516-.312.688-.312.17 0 .34 0 .493.007.16.008.375-.06.572.416.202.486.69 1.688.75 1.81.06.12.1.26.02.41-.08.15-.12.242-.24.364-.12.12-.25.26-.36.36-.12.11-.25.23-.11.472.14.24.62 1.025 1.332 1.666.92.83 1.69 1.087 1.93 1.206.24.12.38.098.52-.06.14-.158.6-696 .76-.935.16-.24.32-.2.54-.11.22.09 1.39.656 1.63.774.24.12.4.177.46.275.06.098.06.574-.19 1.276z"/></svg>
+            Enviar Captura por WhatsApp
+        </button>
+        <p style="font-size:12px;color:#94a3b8;margin-top:10px">Te enviaremos el enlace de descarga inmediatamente por WhatsApp al verificar la captura.</p>
     </div>
-    <button style="background:none;border:0;color:#94a3b8;margin-top:20px;cursor:pointer" onclick="closeModal()">Cerrar</button>
+    
+    <button style="background:none;border:0;color:#94a3b8;margin-top:20px;cursor:pointer" onclick="closeModal()">Cancelar</button>
   </div>
 </div>
 
-<script src="https://checkout.culqi.com/js/v4"></script>
 <script>
-let activeDsId = null;
-let activePrice = null;
-const CULQI_PK = ''' + f'"{CULQI_PUBLIC_KEY}"' + r''';
-
-if(window.Culqi) {
-  Culqi.publicKey = CULQI_PK;
-  Culqi.settings({ title: 'DataMarket', currency: 'PEN', style: { logo: '', bannerColor: '#3b82f6', buttonBackground: '#3b82f6', buttonText: '#fff' } });
-}
+let activeDsTitle = "";
+let activePriceStr = "";
 
 async function load() {
     let r = await fetch("/api/datasets/public");
@@ -332,62 +332,26 @@ async function load() {
                 <div class="records">📊 ${d.record_count} registros</div>
                 <div class="price">S/ ${(d.price_cents/100).toFixed(2)}</div>
             </div>
-            <button class="buy-btn" onclick="buy(${d.id}, '${d.title}', ${d.price_cents})">Comprar Dataset</button>
+            <button class="buy-btn" onclick="buy('${d.title}', ${(d.price_cents/100).toFixed(2)})">Comprar Dataset</button>
         </div>
     `).join('');
 }
 
-function buy(id, title, priceCents) {
-    activeDsId = id;
-    activePrice = priceCents;
+function buy(title, priceStr) {
+    activeDsTitle = title;
+    activePriceStr = priceStr;
     document.getElementById('mTitle').textContent = title;
-    document.getElementById('mPrice').textContent = `S/ ${(priceCents/100).toFixed(2)}`;
-    document.getElementById('payForm').style.display = 'block';
-    document.getElementById('dlBox').style.display = 'none';
-    document.getElementById('payStatus').textContent = '';
+    document.getElementById('mPrice').textContent = `S/ ${priceStr}`;
     document.getElementById('payModal').classList.add('show');
-    
-    if(window.Culqi) Culqi.settings({ title: 'DataMarket', currency: 'PEN', amount: priceCents });
 }
 function closeModal() { document.getElementById('payModal').classList.remove('show'); }
 
-function processPayment() {
-    let email = document.getElementById('payEmail').value;
-    if(!email) return alert("Correo requerido");
-    
-    if(window.Culqi && !Culqi.publicKey.includes('xxxx')) {
-        Culqi.options({ style: { logo: '' } });
-        Culqi.open();
-    } else {
-        // DEMO MODE
-        document.getElementById('payStatus').textContent = 'Procesando...';
-        setTimeout(()=>confirmPayment("demo_token", email), 1000);
-    }
+function sendWhatsApp() {
+    const phone = "51918762620"; // Tu número de WhatsApp
+    const message = `¡Hola Cristian! Acabo de hacer un Yape de S/ ${activePriceStr} por el dataset: *${activeDsTitle}*.\n\nAquí adjunto la captura de pago para recibir mi archivo.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
 }
-
-async function confirmPayment(token, email) {
-    try {
-        let r = await fetch("/api/pay", {
-            method: "POST", headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({token: token, email: email, dataset_id: activeDsId})
-        });
-        let res = await r.json();
-        if(res.ok) {
-            document.getElementById('payForm').style.display = 'none';
-            document.getElementById('dlBox').style.display = 'block';
-            document.getElementById('dlLink').href = `/api/download/${res.access_token}`;
-        } else {
-            document.getElementById('payStatus').textContent = 'Error: ' + res.message;
-        }
-    } catch(e) {
-        document.getElementById('payStatus').textContent = 'Error de red';
-    }
-}
-
-window.culqi = function() {
-    if (Culqi.token) confirmPayment(Culqi.token.id, document.getElementById('payEmail').value);
-    else if (Culqi.order) document.getElementById('payStatus').textContent = 'Procesando Yape...';
-};
 
 load();
 </script></body></html>'''
